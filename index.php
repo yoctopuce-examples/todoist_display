@@ -6,7 +6,7 @@ const TODOIST_API_KEY = "REPLACE WITH YOUR API KEY";
 
 const TODOIST_PROJECT = "";
 
-function update_display(Todoist_API $todoist, YDisplay $display)
+function update_display(Todoist_API $todoist, YDisplay $display): void
 {
     // clear all layer on top of layer 0 an 1
     $layer_count = $display->get_layerCount();

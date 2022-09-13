@@ -63,7 +63,13 @@ class Todoist_API
             if ($task['project_id'] == $this->project_id) {
                 $res[] = $task;
             }
-        }
+        }uasort($res, function ($a, $b) {
+            if ($a['order']  == $b['order']) {
+                return 0;
+            }
+            return ($a['order'] < $b['order']) ? -1 : 1;
+        });
+
         return $res;
     }
 

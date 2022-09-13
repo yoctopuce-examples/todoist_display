@@ -11,7 +11,7 @@ class AppContext
     private $lastUptime;
     private $taskPos;
 
-    static function Get($serial)
+    static function Get($serial): AppContext
     {
         $context = new AppContext($serial);
         $filename = $context->_getFilename();
@@ -68,7 +68,7 @@ class AppContext
         $this->taskPos = $taskPos;
     }
 
-    private function _getFilename()
+    private function _getFilename(): string
     {
         if (!is_dir('contexts')) {
             mkdir('contexts');
@@ -85,9 +85,46 @@ class AppContext
 }
 
 
+function testForButtonPress(YAnButton $button, $last_uptime): bool
+{
+    return $button->lastTimePressed() > $last_uptime;
+}
+
+/**
+ * @param YAnButton $button
+ * @param YModule $module
+ * @param $last_uptime
+ * @return bool
+ */
+function testForLongButtonPress(YAnButton $button, YModule $module, $last_uptime): bool
+{
+    $res = false;
+    $long_press = 2000;
+    $rt = $button->lastTimeReleased();
+    $pt = $button->lastTimePressed();
+    $upTime = $module->upTime();
+    if ($rt > $pt && ($rt - $pt) > $long_press && ($rt > $last_uptime)) {
+        //long press happened still last callback
+        print("long press\n");
+        $res = true;
+    } else if ($rt < $pt && ($pt + $long_press) < $upTime) {
+        //still pressed
+        print("Still pressed\n");
+        $res = true;
+    }
+    return $res;
+}
+
+
+
 function draw_task(YDisplayLayer $layer0, $cur_task)
 {
-    $layer0->drawText(2, 10, YDisplayLayer::ALIGN_TOP_LEFT, $cur_task['content']);
+
+    $layer0->selectFont("Medium.yfm");
+    $layer0->drawText(2, 0, YDisplayLayer::ALIGN_TOP_LEFT, $cur_task['content']);
+    $layer0->drawBar(0, 15, 127, 15);
+
+    $layer0->selectFont("Small.yfm");
     $margin = 20;
     if ($cur_task['due']) {
         $layer0->drawText(2, 20, YDisplayLayer::ALIGN_TOP_LEFT, sprintf("for %s", $cur_task['due']['string']));
@@ -100,18 +137,29 @@ function draw_task(YDisplayLayer $layer0, $cur_task)
     }
 }
 
-function update_display(Todoist_API $toodist, YDisplay $display, array $tasks)
+
+/**
+ * @param YDisplayLayer $layer0
+ * @param string $text
+ * @return int
+ */
+function draw_message(YDisplayLayer $layer0, string $text): int
+{
+    $layer0->selectFont("Medium.yfm");
+    return $layer0->drawText(64, 32, YDisplayLayer::ALIGN_CENTER, $text);
+}
+
+
+function update_display(Todoist_API $todoist, YDisplay $display)
 {
     $context = AppContext::Get($display->get_serialNumber());
     // clear all layer on top of layer 0 an 1
     $layer_count = $display->get_layerCount();
     for ($i = 2; $i < $layer_count; $i++) {
-        /** @var YDisplayLayer $layer */
         $layer = $display->get_displayLayer($i);
         $layer->clear();
     }
 
-    /** @var YDisplayLayer $layer0 */
     $layer0 = $display->get_displayLayer(0);
     $layer0->hide();
     $layer0->clear();
@@ -125,37 +173,35 @@ function update_display(Todoist_API $toodist, YDisplay $display, array $tasks)
     $next_button = YAnButton::FindAnButton("{$module->get_serialNumber()}.anButton1");
     $done_button = YAnButton::FindAnButton("{$module->get_serialNumber()}.anButton2");
 
-    $nb_tasks = sizeof($tasks);
-    $cur_task = $context->getTaskPos();
-    $last_uptime = $context->getLastUptime();
 
-    $task_done = false;
-    $long_press = 2000;
-    $rt = $done_button->lastTimeReleased();
-    $pt = $done_button->lastTimePressed();
-    $upTime = $module->upTime();
-    if (($rt > $last_uptime && ($rt - $pt) > $long_press) ||
-        (($rt < $pt) && ($pt + $long_press) < $upTime)) {
-        $task_done = true;
-    }
-    if ($task_done) {
-        $toodist->makeTaskDone($tasks[$cur_task]['id']);
-        $layer0->drawText(2, 55, YDisplayLayer::ALIGN_TOP_LEFT, "Task Done");
-    } else {
-        if ($next_button->lastTimePressed() > $last_uptime) {
+    $last_uptime = $context->getLastUptime();
+    $cur_task = $context->getTaskPos();
+    if (testForButtonPress($next_button, $last_uptime)) {
+        if (testForButtonPress($next_button, $last_uptime)) {
             $cur_task++;
         }
+        draw_message($layer0, "Loading...");
+        print("\n@YoctoAPI:%\n");
+    } else {
+
+        $todoist->fiter_project(TODOIST_PROJECT);
+        $tasks = $todoist->get_active_tasks();
+        $nb_tasks = sizeof($tasks);
         if ($cur_task < 0 || $cur_task >= $nb_tasks) {
             $cur_task = 0;
         }
-        $today = utf8_decode(strftime('%A %e %b:'));
-        $layer0->drawBar(0, 8, $w - 1, 8);
-        $layer0->drawText(2, 0, YDisplayLayer::ALIGN_TOP_LEFT, $today);
-        if (sizeof($tasks) > 0) {
-            $layer0->drawText($w - 2, 0, YDisplayLayer::ALIGN_TOP_RIGHT, sprintf("%d/%d", $cur_task + 1, $nb_tasks));
-            draw_task($layer0, $tasks[$cur_task]);
+        $task_done = testForLongButtonPress($done_button, $module, $last_uptime);
+        if ($task_done) {
+            $todoist->makeTaskDone($tasks[$cur_task]['id']);
+            draw_message($layer0, "Task Done");
+            print("\n@YoctoAPI:%\n");
         } else {
-            $layer0->drawText(2, 55, YDisplayLayer::ALIGN_TOP_LEFT, "No tasks");
+            if (sizeof($tasks) > 0) {
+                $layer0->drawText($w - 2, 0, YDisplayLayer::ALIGN_TOP_RIGHT, sprintf("%d/%d", $cur_task + 1, $nb_tasks));
+                draw_task($layer0, $tasks[(int)$cur_task]);
+            } else {
+                draw_message($layer0, "No tasks");
+            }
         }
     }
     $context->setTaskPos($cur_task);
@@ -172,12 +218,10 @@ if (YAPI::TestHub("callback", 10, $error) == YAPI::SUCCESS) {
     $debug_msg = "\ndebugLogs:\n";
 
     $toodist = new Todoist_API(TODOIST_API_KEY);
-    $toodist->fiter_project(TODOIST_PROJECT);
-    $tasks = $toodist->get_active_tasks();
 
     $display = YDisplay::FirstDisplay();
     while ($display) {
-        update_display($toodist, $display, $tasks);
+        update_display($toodist, $display);
         $display = $display->nextDisplay();
     }
     print($debug_msg);
@@ -203,5 +247,9 @@ if (YAPI::TestHub("callback", 10, $error) == YAPI::SUCCESS) {
     </li>
     <li>Click on the <em>test</em> button.</li>
 </ol>
+<p>
+    Yoctopuce library: <?php print(YAPI::GetAPIVersion()) ?>
+</p>
+
 </body>
 </html>

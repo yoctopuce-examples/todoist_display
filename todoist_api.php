@@ -72,7 +72,7 @@ class Todoist_API
      * @param string $name the name of the project
      * @return bool return true if the project exist false otherwise
      */
-    public function fiter_project(string $name)
+    public function fiter_project(string $name): bool
     {
         $projets = $this->get_projets();
         foreach ($projets as $proj) {
@@ -85,29 +85,11 @@ class Todoist_API
         return false;
     }
 
-    public function fake()
-    {
-        return array(
-            array(
-                'id' => 6165339766,
-                'project_id' => 2298344690,
-                'content' => 'a faire1',
-                'description' => null,
-                'due' => null,
-            ),
-            array
-            (
-                'id' => 6165340192,
-                'project_id' => 2298344690,
-                'content' => 'à faire 2',
-                'description' => 'descr',
-                'due' => null,
-            )
-        );
-    }
-
+    /**
+     * @throws Throwable
+     */
     public function makeTaskDone($task_id)
     {
-        $all_tasks = $this->request(sprintf("https://api.todoist.com/rest/v1/tasks/%d/close", $task_id), true);
+        $this->request(sprintf("https://api.todoist.com/rest/v1/tasks/%d/close", $task_id), true);
     }
 }

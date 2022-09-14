@@ -1,7 +1,7 @@
 <?php
 
 
-class Todoist_API
+class TodoistAPI
 {
 
     private $api_key;
@@ -22,7 +22,6 @@ class Todoist_API
                 curl_setopt($ch, CURLOPT_POST, true);
             }
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             curl_setopt($ch, CURLOPT_HTTPHEADER, array(
                 "Authorization: Bearer " . $this->api_key
             ));
@@ -54,17 +53,14 @@ class Todoist_API
     public function get_active_tasks()
     {
         $all_tasks = $this->request("https://api.todoist.com/rest/v2/tasks");
-        if ($this->project_id < 0) {
-            return $all_tasks;
-        }
-
         $res = [];
         foreach ($all_tasks as $task) {
-            if ($task['project_id'] == $this->project_id) {
+            if ($this->project_id < 0 || $task['project_id'] == $this->project_id) {
                 $res[] = $task;
             }
-        }uasort($res, function ($a, $b) {
-            if ($a['order']  == $b['order']) {
+        }
+        uasort($res, function ($a, $b) {
+            if ($a['order'] == $b['order']) {
                 return 0;
             }
             return ($a['order'] < $b['order']) ? -1 : 1;

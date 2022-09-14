@@ -1,12 +1,12 @@
 <?php
 require __DIR__ . '/vendor/autoload.php';
-include('todoist_api.php');
+include('TodoistApi.php');
 
 const TODOIST_API_KEY = "REPLACE WITH YOUR API KEY";
 
 const TODOIST_PROJECT = "";
 
-function update_display(Todoist_API $todoist, YDisplay $display): void
+function update_display(TodoistAPI $todoist, YDisplay $display): void
 {
     // clear all layer on top of layer 0 an 1
     $layer_count = $display->get_layerCount();
@@ -56,7 +56,7 @@ if (YAPI::TestHub("callback", 10, $error) == YAPI::SUCCESS) {
     YAPI::RegisterHub("callback");
     $debug_msg = "\ndebugLogs:\n";
 
-    $todoist = new Todoist_API(TODOIST_API_KEY);
+    $todoist = new TodoistAPI(TODOIST_API_KEY);
 
     $display = YDisplay::FirstDisplay();
     while ($display) {

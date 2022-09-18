@@ -1,5 +1,6 @@
 <?php
-require __DIR__ . '/vendor/autoload.php';
+include('yocto_api.php');
+include('yocto_display.php');
 include('TodoistApi.php');
 YAPI::DisableExceptions();
 const CALLBACK_PASS = "change_this";

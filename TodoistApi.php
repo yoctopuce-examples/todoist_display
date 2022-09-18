@@ -42,7 +42,6 @@ class TodoistAPI
             print("Request failed : HTTP=" . $http_code);
             return [];
         }
-        print_r($response);
         return json_decode($response, true);
     }
 

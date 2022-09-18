@@ -12,36 +12,37 @@ class TodoistAPI
         $this->api_key = $api_key;
     }
 
+    /**
+     * @throws Exception
+     */
     private function request($url, bool $post_request = false)
     {
 
         $ch = curl_init();
-        try {
-            curl_setopt($ch, CURLOPT_URL, $url);
-            if ($post_request) {
-                curl_setopt($ch, CURLOPT_POST, true);
-            }
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-                "Authorization: Bearer " . $this->api_key
-            ));
-
-            $response = curl_exec($ch);
-
-            if ($response === false && curl_errno($ch)) {
-                print_r(curl_error($ch));
-                die();
-            }
-
-            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            if ($http_code != intval(200)) {
-                print("Ressource introuvable : " . $http_code);
-            }
-        } catch (\Throwable $th) {
-            throw $th;
-        } finally {
-            curl_close($ch);
+        curl_setopt($ch, CURLOPT_URL, $url);
+        if ($post_request) {
+            curl_setopt($ch, CURLOPT_POST, true);
         }
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+            "Authorization: Bearer " . $this->api_key
+        ));
+
+        $response = curl_exec($ch);
+
+        if ($response === false && curl_errno($ch)) {
+            print_r(curl_error($ch));
+            die();
+        }
+
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        if ($http_code != intval(200)) {
+            print("Request failed : HTTP=" . $http_code);
+            return [];
+        }
+        print_r($response);
         return json_decode($response, true);
     }
 
@@ -76,6 +77,10 @@ class TodoistAPI
      */
     public function fiter_project(string $name): bool
     {
+        if ($name == '') {
+            $this->project_id = -1;
+            return true;
+        }
         $projets = $this->get_projets();
         foreach ($projets as $proj) {
             if ($proj['name'] == $name) {

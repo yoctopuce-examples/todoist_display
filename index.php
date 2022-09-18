@@ -1,9 +1,9 @@
 <?php
 require __DIR__ . '/vendor/autoload.php';
 include('TodoistApi.php');
-
+YAPI::DisableExceptions();
+const CALLBACK_PASS = "change_this";
 const TODOIST_API_KEY = "REPLACE WITH YOUR API KEY";
-
 const TODOIST_PROJECT = "";
 
 function update_display(TodoistAPI $todoist, YDisplay $display): void
@@ -52,18 +52,16 @@ function update_display(TodoistAPI $todoist, YDisplay $display): void
 }
 
 $error = "";
-if (YAPI::TestHub("callback", 10, $error) == YAPI::SUCCESS) {
-    YAPI::RegisterHub("callback");
-    $debug_msg = "\ndebugLogs:\n";
-
+$url = 'md5:' . CALLBACK_PASS . '@callback';
+if (YAPI::TestHub($url, 10, $error) == YAPI::SUCCESS) {
+    YAPI::RegisterHub($url);
     $todoist = new TodoistAPI(TODOIST_API_KEY);
-
     $display = YDisplay::FirstDisplay();
     while ($display) {
         update_display($todoist, $display);
         $display = $display->nextDisplay();
     }
-    print($debug_msg);
+    print("All done.");
     die();
 }
 
